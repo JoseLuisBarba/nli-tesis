@@ -1,7 +1,7 @@
 import torch
 from transformers import BartForConditionalGeneration, BartTokenizer
 import pandas as pd
-from tqdm import tqdm  # Para mostrar el progreso
+from tqdm import tqdm  
 
 print("Cargando datasets...")
 train_dataframe = pd.read_csv("./datos/train.csv")
@@ -14,12 +14,22 @@ tokenizer = BartTokenizer.from_pretrained(model_name)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
-# Definir el tamaño de los lotes
+
 batch_size = 8
 
 def paraphrase_batch(sentences: list):
     inputs = tokenizer(sentences, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
-    generated_ids = model.generate(inputs['input_ids'], num_beams=5, num_return_sequences=1, early_stopping=True)
+    generated_ids = model.generate(
+        inputs['input_ids'], 
+        num_beams=10,  
+        num_return_sequences=3,  
+        max_length=35,  
+        early_stopping=True, 
+        no_repeat_ngram_size=2,  
+        temperature=1.2, 
+        top_k=50,  
+        top_p=0.95  
+    )
     paraphrased_sentences = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
     return paraphrased_sentences
 
@@ -30,7 +40,6 @@ def generate_data_augmentation(df, column_name='hypothesis'):
         paraphrased_batch = paraphrase_batch(batch_sentences)
         new_sentences.extend(paraphrased_batch)
     
-    # Reemplazar las oraciones originales por las parafraseadas
     df[column_name] = new_sentences
     return df
 
@@ -44,5 +53,6 @@ train_dataframe.to_csv('./datos/train_augmented.csv', index=False)
 valid_dataframe.to_csv('./datos/dev_augmented.csv', index=False)
 
 print("Datos aumentados guardados en 'train_augmented.csv' y 'dev_augmented.csv'.")
+
 
 
