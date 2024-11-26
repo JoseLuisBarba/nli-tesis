@@ -1,5 +1,5 @@
 label_mapping = {
-    "NotMentioned": 0, 
-    "Entailment":1,
+    "Entailment":0,
+    "NotMentioned": 1, 
     "Contradiction":2 
 }
