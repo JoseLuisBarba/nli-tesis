@@ -1,6 +1,7 @@
 import torch
 from transformers import BartForConditionalGeneration, BartTokenizer
 import pandas as pd
+from tqdm import tqdm  # Para mostrar el progreso
 
 print("Cargando datasets...")
 train_dataframe = pd.read_csv("./datos/train.csv")
@@ -13,21 +14,25 @@ tokenizer = BartTokenizer.from_pretrained(model_name)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
+# Definir el tamaño de los lotes
+batch_size = 8
 
-def paraphrase_sentence(sentence: str):
-    inputs = tokenizer(sentence, return_tensors="pt", max_length=512, truncation=True).to(device)
+def paraphrase_batch(sentences: list):
+    inputs = tokenizer(sentences, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
     generated_ids = model.generate(inputs['input_ids'], num_beams=5, num_return_sequences=1, early_stopping=True)
-    paraphrased_sentence = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-    return paraphrased_sentence
-
+    paraphrased_sentences = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+    return paraphrased_sentences
 
 def generate_data_augmentation(df, column_name='hypothesis'):
-    for idx, row in df.iterrows():
-        original_sentence = row[column_name]
-        paraphrased_sentence = paraphrase_sentence(original_sentence)
-        df.at[idx, column_name] = paraphrased_sentence  # Reemplazar la oración original con la parafraseada
+    new_sentences = []
+    for i in tqdm(range(0, len(df), batch_size)):
+        batch_sentences = df[column_name].iloc[i:i+batch_size].tolist()
+        paraphrased_batch = paraphrase_batch(batch_sentences)
+        new_sentences.extend(paraphrased_batch)
+    
+    # Reemplazar las oraciones originales por las parafraseadas
+    df[column_name] = new_sentences
     return df
-
 
 print("Generando datos aumentados para el conjunto de entrenamiento...")
 train_dataframe = generate_data_augmentation(train_dataframe, column_name='hypothesis')
@@ -35,9 +40,9 @@ train_dataframe = generate_data_augmentation(train_dataframe, column_name='hypot
 print("Generando datos aumentados para el conjunto de validación...")
 valid_dataframe = generate_data_augmentation(valid_dataframe, column_name='hypothesis')
 
-
 train_dataframe.to_csv('./datos/train_augmented.csv', index=False)
 valid_dataframe.to_csv('./datos/dev_augmented.csv', index=False)
 
 print("Datos aumentados guardados en 'train_augmented.csv' y 'dev_augmented.csv'.")
+
 
