@@ -22,7 +22,7 @@ def paraphrase_batch(sentences: list):
     generated_ids = model.generate(
         inputs['input_ids'], 
         num_beams=10,  
-        num_return_sequences=3,  
+        num_return_sequences=1,  
         max_length=35,  
         early_stopping=True, 
         no_repeat_ngram_size=2,  
