@@ -96,3 +96,47 @@ class TrainingPipeline:
             "test_dataset":self.test_dataset
         }
 
+
+
+
+
+
+# import torch.nn.functional as F
+# from transformers.modeling_outputs import SequenceClassifierOutput
+
+# class WeightedLoss(nn.Module):
+#     def __init__(self, weights, gamma=2.0, label_smoothing=0.1):
+#         super(WeightedLoss, self).__init__()
+#         self.weights = weights
+#         self.gamma = gamma
+#         self.label_smoothing = label_smoothing
+
+#     def forward(self, outputs, labels, num_items_in_batch=None):
+#         if isinstance(outputs, SequenceClassifierOutput):
+#             logits = outputs.logits
+#         else:
+#             logits = outputs
+
+#         self.weights = self.weights.to(logits.device)
+        
+#         Implementar Focal Loss
+#         ce_loss = F.cross_entropy(logits, labels, weight=self.weights, label_smoothing=self.label_smoothing, reduction='none')
+#         pt = torch.exp(-ce_loss)
+#         focal_loss = ((1 - pt) ** self.gamma * ce_loss).mean()
+        
+#         return focal_loss
+
+# Crear una instancia de la función de pérdida con los pesos de clase
+# class_weights = torch.tensor([0.72004132, 0.77187154, 3.16818182], dtype=torch.float)
+# loss_func = WeightedLoss(weights=class_weights)
+
+# Integrar la función de pérdida en el Trainer
+# trainer = Trainer(
+#     model=self.model,
+#     args=training_args,
+#     train_dataset=self.train_dataset,
+#     eval_dataset=self.valid_dataset,
+#     tokenizer=self.tokenizer,
+#     compute_metrics=compute_metrics,
+#     compute_loss_func=loss_func
+# )
