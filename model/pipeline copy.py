@@ -19,11 +19,7 @@ class TrainingPipeline:
         self.train_dataset = generate_dataset(dataframe=train_dataframe, tokenizer=self.tokenizer)
         self.valid_dataset = generate_dataset(dataframe=valid_dataframe, tokenizer=self.tokenizer)
         self.test_dataset = generate_dataset(dataframe=test_dataframe, tokenizer=self.tokenizer)
-
-        self.class_weights = self.compute_class_weights(self.train_dataset)
-        self.loss_fn = self.custom_weighted_cross_entropy_loss(self.class_weights)
-
-
+    
     def compute_class_weights(self, dataset):
         labels = [label for _, label in dataset]
         class_counts = np.bincount(labels)
@@ -54,16 +50,7 @@ class TrainingPipeline:
             metric_for_best_model="eval_f1", 
             greater_is_better=True, 
         )
-
-        class CustomTrainer(Trainer):
-            def compute_loss(self, model, inputs, return_outputs=False):
-                labels = inputs.pop("labels")
-                outputs = model(**inputs)
-                logits = outputs.get("logits")
-                loss = self.model.loss_fn(logits, labels)
-                return (loss, outputs) if return_outputs else loss
-
-        trainer = CustomTrainer(
+        trainer = Trainer(
             model=self.model,
             args=training_args,
             train_dataset=self.train_dataset,
