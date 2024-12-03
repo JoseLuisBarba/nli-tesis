@@ -47,7 +47,7 @@ class TrainingPipeline:
             weight_decay=0.01,
             logging_dir="./logs",
             logging_steps=10,
-            evaluation_strategy="epoch", 
+            eval_strategy="epoch",
             save_strategy="epoch",  
             save_total_limit=1,  
             load_best_model_at_end=True, 
@@ -56,7 +56,7 @@ class TrainingPipeline:
         )
 
         class CustomTrainer(Trainer):
-            def compute_loss(self, model, inputs, return_outputs=False):
+            def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
                 labels = inputs.pop("labels")
                 outputs = model(**inputs)
                 logits = outputs.get("logits")
