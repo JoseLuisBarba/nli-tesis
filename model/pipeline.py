@@ -28,12 +28,12 @@ class WeightedLoss(nn.Module):
             logits = outputs.logits
         else:
             logits = outputs
-        # Mover los pesos al mismo dispositivo que los logits
-        self.weights = self.weights.to(logits.device)
-        return F.cross_entropy(logits, labels, weight=self.weights)
 
-# Crear una instancia de la función de pérdida con los pesos de clase
-class_weights = torch.tensor([0.72004132, 0.77187154, 3.16818182], dtype=torch.float)
+        self.weights = self.weights.to(logits.device)
+        return F.cross_entropy(logits, labels, weight=self.weights, label_smoothing=0.1)
+
+
+class_weights = torch.tensor([0.67903683, 0.85,  2.85017836], dtype=torch.float)
 loss_func = WeightedLoss(weights=class_weights)
 
 
@@ -62,8 +62,8 @@ class TrainingPipeline:
         training_args = TrainingArguments(
             output_dir=f"./output/{self.model_name}",
             num_train_epochs=10,  
-            per_device_train_batch_size=32,
-            per_device_eval_batch_size=32,
+            per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,
             warmup_steps=500,
             weight_decay=0.01,
             logging_dir="./logs",
@@ -74,6 +74,7 @@ class TrainingPipeline:
             load_best_model_at_end=True, 
             metric_for_best_model="eval_f1", 
             greater_is_better=True, 
+            learning_rate=3e-5,
         )
         trainer = Trainer(
             model=self.model,
