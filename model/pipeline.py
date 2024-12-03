@@ -11,11 +11,11 @@ import torch.nn as nn
 
 
 
-def compute_weighted_loss(model, inputs):
+def compute_weighted_loss(model, inputs, num_items_in_batch=None):  
     labels = inputs.get('labels')
     outputs = model(**inputs)
     logits = outputs.logits 
-    loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)  # Usar pesos para manejar desbalance de clases
+    loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)  
     loss = loss_fct(logits.view(-1, model.num_labels), labels.view(-1))
     return (loss, outputs)
 
