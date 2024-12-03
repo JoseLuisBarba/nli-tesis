@@ -12,7 +12,7 @@ import torch.nn as nn
 
 
 def compute_weighted_loss(model, inputs, num_items_in_batch=None):
-    labels = inputs.get('labels') if isinstance(inputs, dict) else None
+    labels = inputs.get('label') if isinstance(inputs, dict) else None
     if labels is None:
         raise ValueError("Labels not found in the input dictionary")
 
