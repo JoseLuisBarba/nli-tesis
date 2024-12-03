@@ -1,11 +1,39 @@
 from model.contract_nli_dataset import generate_dataset
 from model.load_model import load_model_and_tokenizer
 from model.metrics import compute_metrics
-
+from transformers import PreTrainedModel
 from transformers import Trainer, TrainingArguments
 import numpy as np
 import torch
 import torch.nn as nn
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoConfig
+
+class WeightedLoss:
+    @staticmethod
+    def get_loss(labels):
+        class_counts = np.bincount(labels)
+        total_samples = len(labels)
+        class_weights = [total_samples / (len(class_counts) * count) if count > 0 else 0 for count in class_counts]
+        weights = torch.tensor(class_weights, dtype=torch.float)
+        return nn.CrossEntropyLoss(weight=weights)
+
+
+
+class CustomModel(PreTrainedModel):
+    def __init__(self, config, weights):
+        super().__init__(config)
+        self.model = AutoModelForSequenceClassification.from_pretrained(config.name_or_path, config=config)
+        self.loss_fn = nn.CrossEntropyLoss(weight=weights)
+
+    def forward(self, input_ids, attention_mask, labels=None):
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+        logits = outputs.logits
+        loss = None
+        if labels is not None:
+            loss = self.loss_fn(logits, labels)
+        return {"loss": loss, "logits": logits}
+
 
 class TrainingPipeline:
     def __init__(self,
@@ -19,7 +47,12 @@ class TrainingPipeline:
         self.train_dataset = generate_dataset(dataframe=train_dataframe, tokenizer=self.tokenizer)
         self.valid_dataset = generate_dataset(dataframe=valid_dataframe, tokenizer=self.tokenizer)
         self.test_dataset = generate_dataset(dataframe=test_dataframe, tokenizer=self.tokenizer)
-    
+        
+        labels = train_dataframe['labels'].values
+        class_weights = WeightedLoss.get_loss(labels=labels)
+
+        config = AutoConfig.from_pretrained(model_name)
+        self.model = CustomModel(config, weights=class_weights)
 
     def train(self, ):
         training_args = TrainingArguments(
