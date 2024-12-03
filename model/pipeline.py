@@ -10,19 +10,20 @@ import torch
 import torch.nn as nn
 
 
+import torch.nn.functional as F
 
-def compute_weighted_loss(model, inputs, num_items_in_batch=None):
-    labels = inputs.get('label') if isinstance(inputs, dict) else None
-    if labels is None:
-        raise ValueError("Labels not found in the input dictionary")
+class WeightedLoss(nn.Module):
+    def __init__(self, weights):
+        super(WeightedLoss, self).__init__()
+        self.weights = weights
 
-    outputs = model(**inputs)
-    logits = outputs.logits 
+    def forward(self, outputs, labels):
+        return F.cross_entropy(outputs, labels, weight=self.weights)
 
-    loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)
-    loss = loss_fct(logits.view(-1, model.num_labels), labels.view(-1))
 
-    return (loss, outputs)
+# Integrar la función de pérdida en el Trainer
+
+
 
 class TrainingPipeline:
     def __init__(self,
@@ -37,13 +38,9 @@ class TrainingPipeline:
         self.valid_dataset = generate_dataset(dataframe=valid_dataframe, tokenizer=self.tokenizer)
         self.test_dataset = generate_dataset(dataframe=test_dataframe, tokenizer=self.tokenizer)
 
-        self.class_weights = torch.tensor([0.72004132, 0.77187154, 3.16818182], dtype=torch.float)
+        class_weights = torch.tensor([0.72004132, 0.77187154, 3.16818182], dtype=torch.float)
+        self.loss_func = WeightedLoss(weights=class_weights)
 
-    def calculate_class_weights(self, labels):
-        class_counts = torch.bincount(torch.tensor(labels))
-        total_count = len(labels)
-        class_weights = total_count / (len(class_counts) * class_counts)
-        return torch.tensor(class_weights, dtype=torch.float)
 
 
     def train(self, ):
@@ -70,9 +67,9 @@ class TrainingPipeline:
             eval_dataset=self.valid_dataset,
             tokenizer=self.tokenizer,
             compute_metrics=compute_metrics,
-            compute_loss_func=compute_weighted_loss
-            
+            compute_loss_func=self.loss_func
         )
+
         trainer.train()
         return {
             "trainer":trainer, 
