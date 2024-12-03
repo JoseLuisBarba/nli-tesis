@@ -15,6 +15,9 @@ import torch.nn.functional as F
 import torch.nn.functional as F
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+import torch.nn.functional as F
+from transformers.modeling_outputs import SequenceClassifierOutput
+
 class WeightedLoss(nn.Module):
     def __init__(self, weights):
         super(WeightedLoss, self).__init__()
@@ -25,7 +28,15 @@ class WeightedLoss(nn.Module):
             logits = outputs.logits
         else:
             logits = outputs
+        # Mover los pesos al mismo dispositivo que los logits
+        self.weights = self.weights.to(logits.device)
         return F.cross_entropy(logits, labels, weight=self.weights)
+
+# Crear una instancia de la función de pérdida con los pesos de clase
+class_weights = torch.tensor([0.72004132, 0.77187154, 3.16818182], dtype=torch.float)
+loss_func = WeightedLoss(weights=class_weights)
+
+
 
 
 
@@ -71,7 +82,7 @@ class TrainingPipeline:
             eval_dataset=self.valid_dataset,
             tokenizer=self.tokenizer,
             compute_metrics=compute_metrics,
-            compute_loss_func=self.loss_func
+            compute_loss_func=loss_func
         )
 
         trainer.train()
