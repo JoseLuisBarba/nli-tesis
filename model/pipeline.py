@@ -11,12 +11,17 @@ import torch.nn as nn
 
 
 
-def compute_weighted_loss(model, inputs, num_items_in_batch=None):  
-    labels = inputs.get('labels')
+def compute_weighted_loss(model, inputs, num_items_in_batch=None):
+    labels = inputs.get('labels') if isinstance(inputs, dict) else None
+    if labels is None:
+        raise ValueError("Labels not found in the input dictionary")
+
     outputs = model(**inputs)
     logits = outputs.logits 
-    loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)  
+
+    loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)
     loss = loss_fct(logits.view(-1, model.num_labels), labels.view(-1))
+
     return (loss, outputs)
 
 class TrainingPipeline:
