@@ -11,13 +11,13 @@ import torch.nn as nn
 
 
 
-def compute_weighted_loss(model, inputs, return_outputs=False):
+def compute_weighted_loss(model, inputs):
     labels = inputs.get('labels')
     outputs = model(**inputs)
-    logits = outputs.logits if not return_outputs else outputs
+    logits = outputs.logits 
     loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)  # Usar pesos para manejar desbalance de clases
     loss = loss_fct(logits.view(-1, model.num_labels), labels.view(-1))
-    return (loss, outputs) if return_outputs else loss
+    return (loss, outputs)
 
 class TrainingPipeline:
     def __init__(self,
