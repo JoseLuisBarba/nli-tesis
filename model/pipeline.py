@@ -19,26 +19,8 @@ class TrainingPipeline:
         self.train_dataset = generate_dataset(dataframe=train_dataframe, tokenizer=self.tokenizer)
         self.valid_dataset = generate_dataset(dataframe=valid_dataframe, tokenizer=self.tokenizer)
         self.test_dataset = generate_dataset(dataframe=test_dataframe, tokenizer=self.tokenizer)
-
-        self.class_weights = self.compute_class_weights(self.train_dataset)
-        self.loss_fn = self.custom_weighted_cross_entropy_loss(self.class_weights)
-
-
-    def compute_class_weights(self, dataset):
-        labels = [item['labels'].item() for item in dataset]
-        class_counts = np.bincount(labels)
-        total_samples = len(labels)
-        class_weights = [total_samples / (len(class_counts) * count) for count in class_counts]
-        return torch.tensor(class_weights, dtype=torch.float32).to(self.model.device)
-
     
-    def custom_weighted_cross_entropy_loss(self, weights):
-        weights = weights.to(self.model.device)  
-        def loss_fn(logits, labels):
-            loss = nn.CrossEntropyLoss(weight=weights)
-            return loss(logits, labels)
-        return loss_fn
-        
+
     def train(self, ):
         training_args = TrainingArguments(
             output_dir=f"./output/{self.model_name}",
@@ -49,35 +31,20 @@ class TrainingPipeline:
             weight_decay=0.01,
             logging_dir="./logs",
             logging_steps=10,
-            eval_strategy="epoch",
+            evaluation_strategy="epoch", 
             save_strategy="epoch",  
             save_total_limit=1,  
             load_best_model_at_end=True, 
             metric_for_best_model="eval_f1", 
             greater_is_better=True, 
         )
-
-        class CustomTrainer(Trainer):
-            def __init__(self, *args, loss_fn=None, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.loss_fn = loss_fn
-
-            def compute_loss(self, model, inputs, return_outputs=False):
-                labels = inputs.pop("labels").to(model.device)  
-                inputs = {key: value.to(model.device) for key, value in inputs.items()} 
-                outputs = model(**inputs)
-                logits = outputs.get("logits")
-                loss = self.loss_fn(logits, labels)
-                return (loss, outputs) if return_outputs else loss
-
-        trainer = CustomTrainer(
+        trainer = Trainer(
             model=self.model,
             args=training_args,
             train_dataset=self.train_dataset,
             eval_dataset=self.valid_dataset,
             tokenizer=self.tokenizer,
             compute_metrics=compute_metrics,
-            loss_fn=self.loss_fn,
         )
         trainer.train()
         return {
