@@ -12,16 +12,20 @@ import torch.nn as nn
 
 import torch.nn.functional as F
 
+import torch.nn.functional as F
+from transformers.modeling_outputs import SequenceClassifierOutput
+
 class WeightedLoss(nn.Module):
     def __init__(self, weights):
         super(WeightedLoss, self).__init__()
         self.weights = weights
 
     def forward(self, outputs, labels, num_items_in_batch=None):
-        return F.cross_entropy(outputs, labels, weight=self.weights)
-
-
-# Integrar la función de pérdida en el Trainer
+        if isinstance(outputs, SequenceClassifierOutput):
+            logits = outputs.logits
+        else:
+            logits = outputs
+        return F.cross_entropy(logits, labels, weight=self.weights)
 
 
 
