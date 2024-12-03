@@ -29,14 +29,16 @@ class TrainingPipeline:
         class_counts = np.bincount(labels)
         total_samples = len(labels)
         class_weights = [total_samples / (len(class_counts) * count) for count in class_counts]
-        return torch.tensor(class_weights, dtype=torch.float32)
+        return torch.tensor(class_weights, dtype=torch.float32).to(self.model.device)
+
     
     def custom_weighted_cross_entropy_loss(self, weights):
+        weights = weights.to(self.model.device)  
         def loss_fn(logits, labels):
             loss = nn.CrossEntropyLoss(weight=weights)
             return loss(logits, labels)
         return loss_fn
-    
+        
     def train(self, ):
         training_args = TrainingArguments(
             output_dir=f"./output/{self.model_name}",
@@ -60,8 +62,9 @@ class TrainingPipeline:
                 super().__init__(*args, **kwargs)
                 self.loss_fn = loss_fn
 
-            def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
-                labels = inputs.pop("labels")
+            def compute_loss(self, model, inputs, return_outputs=False):
+                labels = inputs.pop("labels").to(model.device)  
+                inputs = {key: value.to(model.device) for key, value in inputs.items()} 
                 outputs = model(**inputs)
                 logits = outputs.get("logits")
                 loss = self.loss_fn(logits, labels)
