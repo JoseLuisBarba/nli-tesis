@@ -17,7 +17,7 @@ class WeightedLoss(nn.Module):
         super(WeightedLoss, self).__init__()
         self.weights = weights
 
-    def forward(self, outputs, labels):
+    def forward(self, outputs, labels, num_items_in_batch=None):
         return F.cross_entropy(outputs, labels, weight=self.weights)
 
 
