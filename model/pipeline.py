@@ -3,37 +3,21 @@ from model.load_model import load_model_and_tokenizer
 from model.metrics import compute_metrics
 from transformers import PreTrainedModel
 from transformers import Trainer, TrainingArguments
-import numpy as np
-import torch
-import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import AutoConfig
 
-class WeightedLoss:
-    @staticmethod
-    def get_loss(labels):
-        class_counts = np.bincount(labels)
-        total_samples = len(labels)
-        class_weights = [total_samples / (len(class_counts) * count) if count > 0 else 0 for count in class_counts]
-        weights = torch.tensor(class_weights, dtype=torch.float)
-        return nn.CrossEntropyLoss(weight=weights)
+import torch
+import torch.nn as nn
 
 
 
-class CustomModel(PreTrainedModel):
-    def __init__(self, config, weights):
-        super().__init__(config)
-        self.model = AutoModelForSequenceClassification.from_pretrained(config.name_or_path, config=config)
-        self.loss_fn = nn.CrossEntropyLoss(weight=weights)
-
-    def forward(self, input_ids, attention_mask, labels=None):
-        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-        logits = outputs.logits
-        loss = None
-        if labels is not None:
-            loss = self.loss_fn(logits, labels)
-        return {"loss": loss, "logits": logits}
-
+def compute_weighted_loss(model, inputs, return_outputs=False):
+    labels = inputs.get('labels')
+    outputs = model(**inputs)
+    logits = outputs.logits if not return_outputs else outputs
+    loss_fct = nn.CrossEntropyLoss(weight=model.class_weights)  # Usar pesos para manejar desbalance de clases
+    loss = loss_fct(logits.view(-1, model.num_labels), labels.view(-1))
+    return (loss, outputs) if return_outputs else loss
 
 class TrainingPipeline:
     def __init__(self,
@@ -47,12 +31,15 @@ class TrainingPipeline:
         self.train_dataset = generate_dataset(dataframe=train_dataframe, tokenizer=self.tokenizer)
         self.valid_dataset = generate_dataset(dataframe=valid_dataframe, tokenizer=self.tokenizer)
         self.test_dataset = generate_dataset(dataframe=test_dataframe, tokenizer=self.tokenizer)
-        
-        labels = train_dataframe['labels'].values
-        class_weights = WeightedLoss.get_loss(labels=labels)
 
-        config = AutoConfig.from_pretrained(model_name)
-        self.model = CustomModel(config, weights=class_weights)
+        self.class_weights = self.calculate_class_weights(train_dataframe['labels'])
+
+    def calculate_class_weights(self, labels):
+        class_counts = torch.bincount(torch.tensor(labels))
+        total_count = len(labels)
+        class_weights = total_count / (len(class_counts) * class_counts)
+        return torch.tensor(class_weights, dtype=torch.float)
+
 
     def train(self, ):
         training_args = TrainingArguments(
@@ -78,6 +65,8 @@ class TrainingPipeline:
             eval_dataset=self.valid_dataset,
             tokenizer=self.tokenizer,
             compute_metrics=compute_metrics,
+            compute_loss_func=compute_weighted_loss
+            
         )
         trainer.train()
         return {

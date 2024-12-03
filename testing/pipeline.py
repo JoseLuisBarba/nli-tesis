@@ -6,6 +6,9 @@ from testing.predict import predict
 from testing.evaluate_model import calculate_metrics
 import tqdm
 
+
+
+
 class ContractNLITestPipeline:
     def __init__(self,
             model_names = ["MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7", ],
