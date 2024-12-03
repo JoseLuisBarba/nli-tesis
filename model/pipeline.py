@@ -32,7 +32,7 @@ class TrainingPipeline:
         self.valid_dataset = generate_dataset(dataframe=valid_dataframe, tokenizer=self.tokenizer)
         self.test_dataset = generate_dataset(dataframe=test_dataframe, tokenizer=self.tokenizer)
 
-        self.class_weights = self.calculate_class_weights(train_dataframe['label'])
+        self.class_weights = torch.tensor([0.72004132, 0.77187154, 3.16818182], dtype=torch.float)
 
     def calculate_class_weights(self, labels):
         class_counts = torch.bincount(torch.tensor(labels))
