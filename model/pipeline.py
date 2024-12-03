@@ -56,11 +56,15 @@ class TrainingPipeline:
         )
 
         class CustomTrainer(Trainer):
+            def __init__(self, *args, loss_fn=None, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.loss_fn = loss_fn
+
             def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
                 labels = inputs.pop("labels")
                 outputs = model(**inputs)
                 logits = outputs.get("logits")
-                loss = self.model.loss_fn(logits, labels)
+                loss = self.loss_fn(logits, labels)
                 return (loss, outputs) if return_outputs else loss
 
         trainer = CustomTrainer(
@@ -70,6 +74,7 @@ class TrainingPipeline:
             eval_dataset=self.valid_dataset,
             tokenizer=self.tokenizer,
             compute_metrics=compute_metrics,
+            loss_fn=self.loss_fn,
         )
         trainer.train()
         return {
