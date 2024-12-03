@@ -25,7 +25,7 @@ class TrainingPipeline:
 
 
     def compute_class_weights(self, dataset):
-        labels = [label for _, label in dataset]
+        labels = [item['labels'].item() for item in dataset]
         class_counts = np.bincount(labels)
         total_samples = len(labels)
         class_weights = [total_samples / (len(class_counts) * count) for count in class_counts]
