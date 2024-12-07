@@ -58,7 +58,7 @@ focal_loss_func = WeightedFocalLoss(weights=class_weights)
 
 
 
-
+#Pipeline
 class TrainingPipeline:
     def __init__(self,
             model_name: str,
